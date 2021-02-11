@@ -1,0 +1,12 @@
+
+.idea
+tolset_p86
+cmake-build-debug
+CMakeFiles
+Testing
+
+k86
+k86.cbp
+Makefile
+CMakeCache.txt
+cmake_install.cmake
