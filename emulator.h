@@ -8,9 +8,14 @@
 #include <stdio.h>
 
 static const int MEMORY_SIZE = 1024 * 1024;
-enum Register { EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, REGISTERS_COUNT };
+enum Register {
+    EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, REGISTERS_COUNT,
+    AL = EAX, CL = ECX, DL = EDX, BL = EBX,
+    AH = AL + 4, CH = CL + 4, DH = DL + 4, BH = BL + 4
+};
 static char* register_names[] = {
-        "EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI"};
+        "EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI"
+};
 
 #define CARRY_FLAG (1)
 #define ZERO_FLAG (1 << 6)
@@ -48,8 +53,24 @@ static uint32_t get_register32(Emulator* emu, uint8_t rm) {
     return emu->registers[rm];
 }
 
+static uint8_t get_register8(Emulator* emu, int index) {
+    if (index < 4) {
+        return emu->registers[index] & 0xff;
+    } else {
+        return (emu->registers[index - 4] >> 8) & 0xff;
+    }
+}
+
 static void set_register32(Emulator* emu, uint8_t rm, uint32_t value) {
     emu->registers[rm] = value;
+}
+
+static void set_register8(Emulator* emu, int index, uint8_t value) {
+    if (index < 4) {
+        emu->registers[index] = (get_register32(emu, index) & 0xffffff00) | ((uint32_t) value);
+    } else {
+        emu->registers[index - 4] = (get_register32(emu, index) & 0xffff00ff) | ((uint32_t) value << 8);
+    }
 }
 
 static uint32_t get_memory8(Emulator* emu, uint32_t address) {
