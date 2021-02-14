@@ -6,7 +6,9 @@
 #include <string.h>
 
 #include "instructions.h"
+#include "io.h"
 #include "modrm.h"
+#include "bios.h"
 
 instruction_func_t* instructions[256];
 
@@ -263,22 +265,6 @@ void leave(Emulator* emu) {
 }
 
 // input / output
-uint8_t io_in8(uint16_t address) {
-    switch (address) {
-        case 0x03f8:
-            return getchar();
-        default:
-            return 0;
-    }
-}
-
-void io_out8(uint16_t address, uint8_t value) {
-    switch (address) {
-        case 0x03f8:
-            putchar(value);
-            break;
-    }
-}
 
 void in_al_dx(Emulator* emu) {
     uint16_t address = get_register32(emu, EDX) & 0xffff;
@@ -292,6 +278,21 @@ void out_dx_al(Emulator* emu) {
     uint8_t value = get_register8(emu, AL);
     io_out8(address, value);
     emu->eip += 1;
+}
+
+// interruption
+
+void swi(Emulator* emu) {
+    uint8_t int_index = get_code8(emu, 1);
+    emu->eip += 2;
+
+    switch (int_index) {
+        case 0x10:
+            bios_video(emu);
+            break;
+        default:
+            printf("Unknown interruption: 0x%02x\n", int_index);
+    }
 }
 
 void init_instructions(void) {
@@ -343,6 +344,7 @@ void init_instructions(void) {
     }
 
     instructions[0xC3] = ret;
+    instructions[0xCD] = swi;
     instructions[0xC7] = mov_rm32_imm32;
     instructions[0xC9] = leave;
 

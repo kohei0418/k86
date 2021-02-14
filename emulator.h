@@ -5,7 +5,9 @@
 #ifndef K86_EMULATOR_H
 #define K86_EMULATOR_H
 
+#include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 static const int MEMORY_SIZE = 1024 * 1024;
 enum Register {
