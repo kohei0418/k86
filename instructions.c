@@ -68,13 +68,35 @@ static void add_rm32_imm8(Emulator* emu, ModRM* modrm)
 void sub_rm32_imm8(Emulator* emu, ModRM* modrm) {
     uint32_t rm32 = get_rm32(emu, modrm);
     uint32_t imm8 = (int32_t) get_signed_code8(emu, 0);
+    uint64_t result = (uint64_t) rm32 - (uint64_t) imm8;
     emu->eip += 1;
     set_rm32(emu, modrm, rm32 - imm8);
+    update_eflags_sub(emu, rm32, imm8, result);
 }
 
 void inc_rm32(Emulator* emu, ModRM* modrm) {
     uint32_t value = get_rm32(emu, modrm);
     set_rm32(emu, modrm, value + 1);
+}
+
+// cmp
+
+void cmp_r32_rm32(Emulator* emu) {
+    emu->eip += 1;
+    ModRM modrm;
+    parse_modrm(emu, &modrm);
+
+    uint32_t r32 = get_r32(emu, &modrm);
+    uint32_t rm32 = get_rm32(emu, &modrm);
+    uint64_t result = (uint64_t) r32 - (uint64_t) rm32;
+    update_eflags_sub(emu, r32, rm32, result);
+}
+
+void cmp_rm32_imm8(Emulator* emu, ModRM* modrm) {
+    uint32_t rm32 = get_rm32(emu, modrm);
+    uint32_t imm8 = (int32_t) get_signed_code8(emu, 0);
+    uint64_t result = (uint64_t) rm32 - (uint64_t) imm8;
+    update_eflags_sub(emu, rm32, imm8, result);
 }
 
 void code_83(Emulator* emu) {
@@ -88,6 +110,9 @@ void code_83(Emulator* emu) {
             break;
         case 5:
             sub_rm32_imm8(emu, &modrm);
+            break;
+        case 7:
+            cmp_rm32_imm8(emu, &modrm);
             break;
         default:
             printf("Not implemented yet: code=83/%d", modrm.opcode);
@@ -126,6 +151,31 @@ void call_rel32(Emulator* emu) {
     int32_t diff = get_signed_code32(emu, 1);
     push32(emu, emu->eip + 5);
     emu->eip += diff + 5;
+}
+
+#define DEFINE_JX(flag, is_flag) \
+static void j ## flag(Emulator* emu) { \
+  int diff = is_flag(emu) ? get_signed_code8(emu, 1) : 0; \
+  emu->eip += diff + 2; \
+} \
+static void jn ## flag(Emulator* emu) { \
+  int diff = !is_flag(emu) ? get_signed_code8(emu, 1) : 0; \
+  emu->eip += diff + 2; \
+} \
+
+DEFINE_JX(c, is_carry)
+DEFINE_JX(z, is_zero)
+DEFINE_JX(s, is_sign)
+DEFINE_JX(o, is_overflow)
+
+void jl(Emulator* emu) {
+    int diff = (is_sign(emu) != is_overflow(emu)) ? get_signed_code8(emu, 1) : 0;
+    emu->eip += (diff + 2);
+}
+
+void jle(Emulator* emu) {
+    int diff = (is_zero(emu) || (is_sign(emu) != is_overflow(emu))) ? get_signed_code8(emu, 1) : 0;
+    emu->eip += (diff + 2);
 }
 
 void ret(Emulator* emu) {
@@ -170,6 +220,8 @@ void init_instructions(void) {
 
     instructions[0x01] = add_rm32_r32;
 
+    instructions[0x3B] = cmp_r32_rm32;
+
     for (int i = 0; i < 8; i++) {
         instructions[0x50 + i] = push_r32;
     }
@@ -180,6 +232,17 @@ void init_instructions(void) {
 
     instructions[0x68] = push_imm32;
     instructions[0x6A] = push_imm8;
+
+    instructions[0x70] = jo;
+    instructions[0x71] = jno;
+    instructions[0x72] = jc;
+    instructions[0x73] = jnc;
+    instructions[0x74] = jz;
+    instructions[0x75] = jnz;
+    instructions[0x78] = js;
+    instructions[0x79] = jns;
+    instructions[0x7C] = jl;
+    instructions[0x7E] = jle;
 
     instructions[0x83] = code_83;
     instructions[0x89] = mov_rm32_r32;
