@@ -39,6 +39,49 @@ static int32_t get_signed_code32(Emulator* emu, int index) {
     return (int32_t) get_code32(emu, index);
 }
 
+static uint32_t get_register32(Emulator* emu, uint8_t rm) {
+    return emu->registers[rm];
+}
+
+static void set_register32(Emulator* emu, uint8_t rm, uint32_t value) {
+    emu->registers[rm] = value;
+}
+
+static uint32_t get_memory8(Emulator* emu, uint32_t address) {
+    return emu->memory[address];
+}
+
+static uint32_t get_memory32(Emulator* emu, uint32_t address) {
+    uint32_t ret = 0;
+    for(int i = 0; i < 4; i++) {
+        ret |= get_memory8(emu, address + i) << (i * 8);
+    }
+    return ret;
+}
+
+static void set_memory8(Emulator* emu, uint32_t address, uint32_t value) {
+    emu->memory[address] = value & 0xFF;
+}
+
+static void set_memory32(Emulator* emu, uint32_t address, uint32_t value) {
+    for (int i = 0; i < 4; i++) {
+        set_memory8(emu, address + i, value >> (i * 8));
+    }
+}
+
+static void push32(Emulator* emu, uint32_t value) {
+    uint32_t address = get_register32(emu, ESP) - 4;
+    set_register32(emu, ESP, address);
+    set_memory32(emu, address, value);
+}
+
+static uint32_t pop32(Emulator* emu) {
+    uint32_t address = get_register32(emu, ESP);
+    uint32_t ret = get_memory32(emu, address);
+    set_register32(emu, ESP, address + 4);
+    return ret;
+}
+
 static void dump_registers(Emulator* emu) {
     for (int i = 0; i < REGISTERS_COUNT; i++) {
         printf("%s = %08x\n", register_names[i], emu->registers[i]);

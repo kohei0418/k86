@@ -30,36 +30,6 @@ void parse_modrm(Emulator* emu, ModRM* modrm) {
     }
 }
 
-uint32_t get_register32(Emulator* emu, uint8_t rm) {
-    return emu->registers[rm];
-}
-
-void set_register32(Emulator* emu, uint8_t rm, uint32_t value) {
-    emu->registers[rm] = value;
-}
-
-uint32_t get_memory8(Emulator* emu, uint32_t address) {
-    return emu->memory[address];
-}
-
-uint32_t get_memory32(Emulator* emu, uint32_t address) {
-    uint32_t ret = 0;
-    for(int i = 0; i < 4; i++) {
-        ret |= get_memory8(emu, address + i) << (i * 8);
-    }
-    return ret;
-}
-
-void set_memory8(Emulator* emu, uint32_t address, uint32_t value) {
-    emu->memory[address] = value & 0xFF;
-}
-
-void set_memory32(Emulator* emu, uint32_t address, uint32_t value) {
-    for (int i = 0; i < 4; i++) {
-        set_memory8(emu, address + i, value >> (i * 8));
-    }
-}
-
 uint32_t calc_memory_address(Emulator* emu, ModRM* modrm) {
     if (modrm->mod == 0) {
         if (modrm->rm == 4) {
